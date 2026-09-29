@@ -1,5 +1,6 @@
 function required(name: string): string {
-  const value = process.env[name];
+  // Trim so a stray space or newline pasted into the dashboard does not break signatures or logins.
+  const value = process.env[name]?.trim().replace(/^["']|["']$/g, "");
   if (!value) {
     throw new Error(`Missing required environment variable: ${name}`);
   }

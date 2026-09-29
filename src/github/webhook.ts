@@ -21,8 +21,12 @@ export function startWebhookServer(): void {
 
   // Raw body is required to verify GitHub's HMAC signature.
   app.post("/github/webhook", express.raw({ type: "application/json", limit: "5mb" }), (req, res) => {
+    if (!Buffer.isBuffer(req.body)) {
+      res.status(415).send("set the webhook Content type to application/json");
+      return;
+    }
     if (!validSignature(req.body, req.header("x-hub-signature-256"))) {
-      res.status(401).send("invalid signature");
+      res.status(401).send("invalid signature: the webhook Secret must match GITHUB_WEBHOOK_SECRET");
       return;
     }
     const event = req.header("x-github-event") ?? "";
