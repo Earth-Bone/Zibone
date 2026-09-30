@@ -4,7 +4,35 @@
 
 <h1 align="center">지본 (Zibone)</h1>
 
-<p align="center">GitHub PR이 올라오면 디스코드 채널에서 리뷰어를 알아서 태그해 주는 봇</p>
+<p align="center">PR 올리면 디스코드에서 리뷰어를 알아서 태그해 주는 봇 🌏</p>
+
+---
+
+> "PR 올렸어요, 리뷰 부탁드려요 @민수 @지영"
+> "아직 안 보셨나요…? @민수"
+> "수정 반영했어요! 다시 봐주세요 @민수 @지영"
+
+이런 메시지, 이제 지본이 대신 보내요.
+
+- ✔️ PR이 올라오면 PR 링크와 함께 리뷰어를 자동으로 태그해요
+- ✔️ 새 커밋을 push하면 리뷰어를 다시 불러요
+- ✔️ Approve·변경 요청·코멘트가 달리면 작성자에게 알려요
+- ✔️ GitHub에서 리뷰어를 지정하면 그 사람만 콕 집어 태그해요
+- ✔️ 리뷰가 24시간 동안 없으면 리마인더를 보내요
+- ✔️ 채널마다 태그할 담당자를 `/담당자` 명령어로 직접 골라요
+- 🔒 GitHub 로그인으로 본인과 레포 권한을 확인해서, 남의 레포 알림은 받을 수 없어요
+
+GitHub에서는 평소처럼 일하세요. 부르는 건 지본이 할게요.
+
+## 바로 쓰기
+
+1. [디스코드 서버에 지본 초대](https://discord.com/oauth2/authorize?client_id=1554520607989960724&permissions=19456&integration_type=0&scope=applications.commands+bot)
+2. [GitHub 레포에 지본 App 설치](https://github.com/apps/zi-bone/installations/new)
+3. 알림 받을 채널에서 `/레포 등록 repo:올가/레포` → GitHub 로그인
+4. 팀원 각자 `/연결` → GitHub 로그인
+5. (선택) `/담당자 추가 user:@이름`
+
+아래는 직접 지본을 운영(배포)하려는 경우의 안내예요.
 
 ---
 
