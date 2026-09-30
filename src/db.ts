@@ -55,6 +55,12 @@ db.exec(`
     state        TEXT NOT NULL,
     PRIMARY KEY (repo, number, github_login)
   );
+
+  -- Values created at runtime, e.g. the GitHub App made through /setup
+  CREATE TABLE IF NOT EXISTS settings (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
 `);
 
 // GitHub logins and repo names are case-insensitive, so store them lowercased.
@@ -235,4 +241,17 @@ export function reviewersWhoReviewed(repo: string, number: number): string[] {
     .prepare("SELECT github_login FROM reviews WHERE repo = ? AND number = ?")
     .all(lower(repo), number) as { github_login: string }[];
   return rows.map((r) => r.github_login);
+}
+
+// ---- settings ----
+
+export function getSetting(key: string): string | undefined {
+  const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key) as { value: string } | undefined;
+  return row?.value;
+}
+
+export function setSetting(key: string, value: string): void {
+  db.prepare(
+    "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+  ).run(key, value);
 }

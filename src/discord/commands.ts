@@ -90,6 +90,10 @@ const HELP = [
   "• 머지 / 닫힘 → 태그 없이 알림",
 ].join("\n");
 
+function installUrl(): string | undefined {
+  return config.githubAppInstallUrl ?? db.getSetting("app_install_url");
+}
+
 function canManageOthers(i: ChatInputCommandInteraction): boolean {
   return i.memberPermissions?.has(PermissionFlagsBits.ManageGuild) ?? false;
 }
@@ -149,8 +153,8 @@ export async function handleCommand(i: ChatInputCommandInteraction): Promise<voi
         db.addRepoChannel(repo, i.channelId, i.guildId);
         await i.reply(
           `📦 \`${repo}\` PR 알림을 이 채널로 보낼게요.\n` +
-            (config.githubAppInstallUrl
-              ? `아직 이 레포에 지본 GitHub App을 설치하지 않았다면 👉 [설치하기](${config.githubAppInstallUrl})`
+            (installUrl()
+              ? `아직 이 레포에 지본 GitHub App을 설치하지 않았다면 👉 [설치하기](${installUrl()})`
               : "GitHub 레포 Settings → Webhooks에 봇 주소가 등록돼 있는지 확인하세요."),
         );
       } else {

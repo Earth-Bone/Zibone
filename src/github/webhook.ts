@@ -1,19 +1,30 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import express from "express";
 import { config } from "../config.js";
+import * as db from "../db.js";
+import { setupRouter } from "./app-setup.js";
 import { handleEvent } from "./handlers.js";
 
-function validSignature(rawBody: Buffer, header: string | undefined): boolean {
-  if (!header?.startsWith("sha256=")) return false;
-  const expected = Buffer.from(
-    "sha256=" + createHmac("sha256", config.githubWebhookSecret).update(rawBody).digest("hex"),
-  );
+function matches(secret: string, rawBody: Buffer, header: string): boolean {
+  const expected = Buffer.from("sha256=" + createHmac("sha256", secret).update(rawBody).digest("hex"));
   const received = Buffer.from(header);
   return expected.length === received.length && timingSafeEqual(expected, received);
 }
 
+/** Accepts repo webhooks signed with GITHUB_WEBHOOK_SECRET and GitHub App deliveries signed with the app's secret. */
+function validSignature(rawBody: Buffer, header: string | undefined): boolean {
+  if (!header?.startsWith("sha256=")) return false;
+  const secrets = [config.githubWebhookSecret, db.getSetting("app_webhook_secret")].filter(
+    (s): s is string => Boolean(s),
+  );
+  return secrets.some((secret) => matches(secret, rawBody, header));
+}
+
 export function startWebhookServer(): void {
   const app = express();
+  // Railway terminates TLS in front of us; trust it so req.protocol is https.
+  app.set("trust proxy", true);
+  app.use(setupRouter());
 
   app.get("/health", (_req, res) => {
     res.send("ok");

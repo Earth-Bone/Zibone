@@ -75,26 +75,14 @@
 
 ### 3. GitHub App 만들기 (운영자, 한 번만)
 
-지본은 GitHub App으로 PR 이벤트를 받아요. App을 설치한 레포에는 Webhook이 자동으로 연결돼서, 레포마다 Webhook을 따로 만들 필요가 없어요. 토큰이나 Private Key도 필요 없어요.
+지본은 GitHub App으로 PR 이벤트를 받아요. App을 설치한 레포에는 Webhook이 자동으로 연결돼서 레포마다 Webhook을 만들 필요가 없어요.
 
-1. GitHub 프로필 → **Settings → Developer settings → GitHub Apps → New GitHub App**
-2. 입력값
-   - GitHub App name: `Zibone` (이미 쓰이는 이름이면 다른 이름)
-   - Homepage URL: 이 레포 주소
-   - **Webhook**: Active 체크
-     - Webhook URL: `https://<도메인>/github/webhook`
-     - Webhook secret: Railway의 `GITHUB_WEBHOOK_SECRET`과 같은 값
-   - **Permissions → Repository permissions → Pull requests: Read-only**
-   - **Subscribe to events**: `Pull request`, `Pull request review`
-   - **Where can this GitHub App be installed?**: `Any account`
-3. **Create GitHub App** → 생성된 App 페이지에서 Logo에 `assets/avatar.png` 업로드
-4. App 페이지의 **Public link**(`https://github.com/apps/<앱이름>`) 뒤에 `/installations/new`를 붙여 Railway 변수에 추가
+1. 브라우저에서 `https://<도메인>/setup` 접속
+2. (선택) App 이름, 올가 소유 여부 입력 → **이름/소유자 적용**
+3. **GitHub에서 "Zibone" App 만들기** → GitHub 화면에서 **Create GitHub App**
+4. 자동으로 설치 화면으로 이동해요. 4단계로 이어서 진행하세요.
 
-   | 이름 | 값 |
-   | --- | --- |
-   | `GITHUB_APP_INSTALL_URL` | `https://github.com/apps/<앱이름>/installations/new` |
-
-   이 링크는 `/레포 등록` 답장에 표시돼요.
+Webhook 주소, 권한(Pull requests: Read-only), 이벤트(`Pull request`, `Pull request review`)는 모두 자동으로 채워지고, App의 Webhook secret은 봇이 직접 저장해요. `/setup`은 한 번 App을 만들면 설치 링크만 보여줘요.
 
 ### 4. 레포에 App 설치 (레포 관리자, 레포마다 한 번)
 
