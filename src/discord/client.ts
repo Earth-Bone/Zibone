@@ -5,11 +5,12 @@ export const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 export interface Notification {
   channelId: string;
   mentions: string[];
+  /** Not posted; the message shows only mentions and the embed. */
   headline: string;
   embed: EmbedBuilder;
 }
 
-export async function send({ channelId, mentions, headline, embed }: Notification): Promise<void> {
+export async function send({ channelId, mentions, embed }: Notification): Promise<void> {
   const unique = [...new Set(mentions)];
   const channel = await client.channels.fetch(channelId).catch(() => null);
   if (!channel || !channel.isSendable()) {
@@ -18,7 +19,7 @@ export async function send({ channelId, mentions, headline, embed }: Notificatio
   }
   const mentionLine = unique.map((id) => `<@${id}>`).join(" ");
   await channel.send({
-    content: mentionLine ? `${mentionLine}\n${headline}` : headline,
+    content: mentionLine || undefined,
     embeds: [embed],
     // Only ping the users we explicitly chose; never @everyone or roles from PR titles.
     allowedMentions: { users: unique, parse: [] },
