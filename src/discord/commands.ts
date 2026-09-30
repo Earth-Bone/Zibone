@@ -5,7 +5,6 @@ import {
   type ChatInputCommandInteraction,
   type Guild,
   MessageFlags,
-  PermissionFlagsBits,
   SlashCommandBuilder,
 } from "discord.js";
 import { config } from "../config.js";
@@ -13,6 +12,17 @@ import * as db from "../db.js";
 import { createSignInUrl } from "../github/oauth.js";
 
 const REPO_PATTERN = /^[\w.-]+\/[\w.-]+$/;
+
+/** Accepts a GitHub link (https://github.com/owner/name, with or without .git or extra path) or plain owner/name. */
+function parseRepo(input: string): string | null {
+  const path = input
+    .trim()
+    .replace(/^(https?:\/\/)?(www\.)?github\.com\//i, "")
+    .split(/[?#]/)[0];
+  const [owner, name] = path.split("/");
+  const repo = `${owner}/${(name ?? "").replace(/\.git$/, "")}`;
+  return REPO_PATTERN.test(repo) ? repo : null;
+}
 
 export const commandDefinitions = [
   new SlashCommandBuilder()
@@ -26,18 +36,17 @@ export const commandDefinitions = [
   new SlashCommandBuilder()
     .setName("레포")
     .setDescription("이 채널에서 알림 받을 GitHub 레포를 관리해요")
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
     .addSubcommand((s) =>
       s
         .setName("등록")
         .setDescription("이 채널에 레포 PR 알림을 연결해요")
-        .addStringOption((o) => o.setName("repo").setDescription("owner/name 형식 (예: Earth-Bone/my-app)").setRequired(true)),
+        .addStringOption((o) => o.setName("repo").setDescription("GitHub 레포 링크 (예: https://github.com/Earth-Bone/my-app)").setRequired(true)),
     )
     .addSubcommand((s) =>
       s
         .setName("해제")
         .setDescription("이 채널에서 레포 알림을 끊어요")
-        .addStringOption((o) => o.setName("repo").setDescription("owner/name 형식").setRequired(true)),
+        .addStringOption((o) => o.setName("repo").setDescription("GitHub 레포 링크").setRequired(true)),
     )
     .addSubcommand((s) => s.setName("목록").setDescription("이 채널에 연결된 레포를 보여줘요")),
 
@@ -70,8 +79,8 @@ export async function registerCommands(guild: Guild): Promise<void> {
 const HELP = [
   "**지본 사용법** 🌏",
   "",
-  "**1. 레포 연결** (채널 관리 권한 필요)",
-  "`/레포 등록 repo:owner/name` → GitHub 로그인으로 레포 쓰기 권한을 확인한 뒤 이 채널로 PR 알림을 받아요",
+  "**1. 레포 연결**",
+  "`/레포 등록 repo:https://github.com/owner/name` → GitHub 로그인으로 레포 쓰기 권한을 확인한 뒤 이 채널로 PR 알림을 받아요",
   "레포에 지본 GitHub App이 설치돼 있어야 해요 (설치 링크는 등록 답장에 있어요)",
   "",
   "**2. 계정 연결** (각자 한 번)",
@@ -145,9 +154,9 @@ export async function handleCommand(i: ChatInputCommandInteraction): Promise<voi
         );
         return;
       }
-      const repo = i.options.getString("repo", true).trim().replace(/^https?:\/\/github\.com\//, "").replace(/\/$/, "");
-      if (!REPO_PATTERN.test(repo)) {
-        await i.reply({ content: "레포는 `owner/name` 형식으로 입력해 주세요.", ...ephemeral });
+      const repo = parseRepo(i.options.getString("repo", true));
+      if (!repo) {
+        await i.reply({ content: "GitHub 레포 링크를 입력해 주세요. (예: `https://github.com/Earth-Bone/my-app`)", ...ephemeral });
         return;
       }
       if (sub === "등록") {

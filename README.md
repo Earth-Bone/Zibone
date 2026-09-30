@@ -28,7 +28,7 @@ GitHub에서는 평소처럼 일하세요. 부르는 건 지본이 할게요.
 
 1. [디스코드 서버에 지본 초대](https://discord.com/oauth2/authorize?client_id=1554520607989960724&permissions=19456&integration_type=0&scope=applications.commands+bot)
 2. [GitHub 레포에 지본 App 설치](https://github.com/apps/zi-bone/installations/new)
-3. 알림 받을 채널에서 `/레포 등록 repo:올가/레포` → GitHub 로그인
+3. 알림 받을 채널에서 `/레포 등록 repo:https://github.com/올가/레포` → GitHub 로그인
 4. 팀원 각자 `/연결` → GitHub 로그인
 5. (선택) `/담당자 추가 user:@이름`
 
@@ -55,8 +55,8 @@ GitHub에서는 평소처럼 일하세요. 부르는 건 지본이 할게요.
 
 | 명령어 | 설명 |
 | --- | --- |
-| `/레포 등록 repo:owner/name` | GitHub 로그인으로 레포 쓰기 권한을 확인한 뒤 이 채널로 PR 알림을 받아요 (채널 관리 권한, 레포에 GitHub App 설치 필요) |
-| `/레포 해제 repo:owner/name` · `/레포 목록` | 연결 해제 / 연결된 레포 보기 |
+| `/레포 등록 repo:https://github.com/owner/name` | GitHub 로그인으로 레포 쓰기 권한을 확인한 뒤 이 채널로 PR 알림을 받아요 (레포에 GitHub App 설치 필요) |
+| `/레포 해제 repo:https://github.com/owner/name` · `/레포 목록` | 연결 해제 / 연결된 레포 보기 |
 | `/연결` | GitHub 로그인으로 내 디스코드 계정과 GitHub 계정 연결 (각자 한 번) |
 | `/연결해제` | GitHub 연결 해제 |
 | `/담당자 추가 user:@사람` | 이 채널에서 태그할 사람 추가 |
@@ -138,7 +138,7 @@ Webhook 주소, 권한(Pull requests: Read-only), 이벤트(`Pull request`, `Pul
 ### 5. 디스코드에서 설정
 
 ```
-/레포 등록 repo:Earth-Bone/my-app
+/레포 등록 repo:https://github.com/Earth-Bone/my-app
 /연결                               ← 팀원 각자, GitHub 로그인
 /담당자 추가 user:@민수
 ```
