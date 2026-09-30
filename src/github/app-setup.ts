@@ -1,6 +1,8 @@
 import { randomBytes } from "node:crypto";
 import { Router, type Request } from "express";
 import * as db from "../db.js";
+import { callbackUrl } from "./oauth.js";
+import { escapeHtml, page } from "./pages.js";
 
 /*
  * One-click GitHub App creation using GitHub's app manifest flow:
@@ -12,19 +14,6 @@ import * as db from "../db.js";
 
 const STATE_TTL_MS = 30 * 60 * 1000;
 const pendingStates = new Map<string, number>();
-
-const escapeHtml = (s: string) =>
-  s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
-function page(title: string, body: string): string {
-  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${title}</title><style>
-body{font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:48px auto;padding:0 16px;line-height:1.6;color:#1f2328}
-button,a.button{display:inline-block;background:#2da44e;color:#fff;border:0;border-radius:6px;padding:10px 18px;font-size:16px;text-decoration:none;cursor:pointer}
-input{padding:8px;font-size:15px;border:1px solid #d0d7de;border-radius:6px;width:100%;box-sizing:border-box;margin:4px 0 16px}
-code{background:#f6f8fa;padding:2px 6px;border-radius:4px}
-</style></head><body>${body}</body></html>`;
-}
 
 function baseUrl(req: Request): string {
   return `${req.protocol}://${req.get("host")}`;
@@ -63,6 +52,7 @@ export function setupRouter(): Router {
       description: "PR이 올라오면 디스코드에서 리뷰어를 태그해 주는 봇",
       hook_attributes: { url: `${base}/github/webhook`, active: true },
       redirect_url: `${base}/setup/callback`,
+      callback_urls: [callbackUrl(base)],
       public: true,
       default_permissions: { pull_requests: "read", metadata: "read" },
       default_events: ["pull_request", "pull_request_review"],
@@ -117,11 +107,20 @@ export function setupRouter(): Router {
       res.status(502).send(page("오류", `<p>GitHub App 생성 확인에 실패했어요. <a href="/setup">다시 시도</a>해 주세요.</p>`));
       return;
     }
-    const app = (await response.json()) as { slug: string; name: string; webhook_secret: string; html_url: string };
+    const app = (await response.json()) as {
+      slug: string;
+      name: string;
+      webhook_secret: string;
+      html_url: string;
+      client_id: string;
+      client_secret: string;
+    };
 
     db.setSetting("app_slug", app.slug);
     db.setSetting("app_webhook_secret", app.webhook_secret);
     db.setSetting("app_install_url", installUrlFor(app.slug));
+    db.setSetting("app_client_id", app.client_id);
+    db.setSetting("app_client_secret", app.client_secret);
     console.log(`GitHub App "${app.name}" created: ${app.html_url}`);
 
     res.redirect(installUrlFor(app.slug));

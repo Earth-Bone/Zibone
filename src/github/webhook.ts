@@ -4,6 +4,7 @@ import { config } from "../config.js";
 import * as db from "../db.js";
 import { setupRouter } from "./app-setup.js";
 import { handleEvent } from "./handlers.js";
+import { oauthRouter } from "./oauth.js";
 
 function matches(secret: string, rawBody: Buffer, header: string): boolean {
   const expected = Buffer.from("sha256=" + createHmac("sha256", secret).update(rawBody).digest("hex"));
@@ -25,6 +26,7 @@ export function startWebhookServer(): void {
   // Railway terminates TLS in front of us; trust it so req.protocol is https.
   app.set("trust proxy", true);
   app.use(setupRouter());
+  app.use(oauthRouter());
 
   app.get("/health", (_req, res) => {
     res.send("ok");

@@ -63,6 +63,11 @@ db.exec(`
   );
 `);
 
+// Links made before GitHub sign-in existed were self-declared, so drop them once.
+if (!db.prepare("SELECT 1 FROM settings WHERE key = 'links_verified'").get()) {
+  db.exec("DELETE FROM user_links; INSERT INTO settings (key, value) VALUES ('links_verified', '1');");
+}
+
 // GitHub logins and repo names are case-insensitive, so store them lowercased.
 const lower = (s: string) => s.toLowerCase();
 

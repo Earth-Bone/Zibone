@@ -28,4 +28,13 @@ export const config = {
   timezone: process.env.TIMEZONE || "Asia/Seoul",
   // e.g. https://github.com/apps/zibone/installations/new, shown in /레포 등록 replies
   githubAppInstallUrl: process.env.GITHUB_APP_INSTALL_URL?.trim() || undefined,
+  // GitHub App OAuth credentials (App settings > Client ID / Generate a new client secret).
+  // Apps created through /setup store these automatically, so the env vars are only needed for older apps.
+  githubClientId: process.env.GITHUB_CLIENT_ID?.trim() || undefined,
+  githubClientSecret: process.env.GITHUB_CLIENT_SECRET?.trim() || undefined,
+  // Public https URL of this bot; Railway provides RAILWAY_PUBLIC_DOMAIN automatically.
+  publicUrl: (
+    process.env.PUBLIC_URL?.trim() ||
+    (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : "")
+  ).replace(/\/$/, "") || undefined,
 };

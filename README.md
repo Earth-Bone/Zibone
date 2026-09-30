@@ -27,14 +27,15 @@
 
 | 명령어 | 설명 |
 | --- | --- |
-| `/레포 등록 repo:owner/name` | 이 채널로 해당 레포 PR 알림을 받아요 (채널 관리 권한 필요, 레포에 GitHub App 설치 필요) |
+| `/레포 등록 repo:owner/name` | GitHub 로그인으로 레포 쓰기 권한을 확인한 뒤 이 채널로 PR 알림을 받아요 (채널 관리 권한, 레포에 GitHub App 설치 필요) |
 | `/레포 해제 repo:owner/name` · `/레포 목록` | 연결 해제 / 연결된 레포 보기 |
-| `/연결 github:아이디` | 내 디스코드 계정과 GitHub 계정 연결 (각자 한 번) |
-| `/연결 github:아이디 user:@사람` | 다른 사람 대신 연결 (서버 관리 권한 필요) |
+| `/연결` | GitHub 로그인으로 내 디스코드 계정과 GitHub 계정 연결 (각자 한 번) |
 | `/연결해제` | GitHub 연결 해제 |
 | `/담당자 추가 user:@사람` | 이 채널에서 태그할 사람 추가 |
 | `/담당자 제거` · `/담당자 목록` · `/담당자 초기화` | 담당자 관리 |
 | `/도움말` | 사용법 |
+
+**보안:** `/연결`과 `/레포 등록`은 GitHub 로그인을 거쳐요. 남의 GitHub 아이디로 연결하거나, 쓰기 권한이 없는 레포의 PR 알림을 받아 갈 수 없어요. GitHub 토큰은 확인에만 쓰고 저장하지 않아요.
 
 **태그 규칙:** PR에 GitHub Reviewers가 지정돼 있으면 그 사람을 태그하고, 아무도 지정되지 않았으면 `/담당자`로 저장한 사람을 태그해요. GitHub Reviewers를 디스코드에서 태그하려면 그 사람이 `/연결`을 해 둬야 해요.
 
@@ -84,6 +85,20 @@
 
 Webhook 주소, 권한(Pull requests: Read-only), 이벤트(`Pull request`, `Pull request review`)는 모두 자동으로 채워지고, App의 Webhook secret은 봇이 직접 저장해요. `/setup`은 한 번 App을 만들면 설치 링크만 보여줘요.
 
+### 3-1. GitHub 로그인 설정 (운영자, 한 번만)
+
+`/setup`으로 새로 만든 App은 자동으로 설정돼요. 그 전에 만든 App이면 아래를 한 번 해 주세요.
+
+1. GitHub → Settings → Developer settings → GitHub Apps → 지본 App → **Edit**
+2. **Callback URL**에 `https://<도메인>/auth/github/callback` 추가 → Save changes
+3. 같은 화면의 **Client ID** 복사, **Generate a new client secret**으로 secret 생성
+4. Railway Variables에 추가 후 Deploy
+
+   | 이름 | 값 |
+   | --- | --- |
+   | `GITHUB_CLIENT_ID` | Client ID |
+   | `GITHUB_CLIENT_SECRET` | 생성한 client secret |
+
 ### 4. 레포에 App 설치 (레포 관리자, 레포마다 한 번)
 
 1. 설치 링크 열기 → 설치할 계정/올가 선택
@@ -96,7 +111,7 @@ Webhook 주소, 권한(Pull requests: Read-only), 이벤트(`Pull request`, `Pul
 
 ```
 /레포 등록 repo:minwoo-3/my-app
-/연결 github:내깃허브아이디        ← 팀원 각자
+/연결                               ← 팀원 각자, GitHub 로그인
 /담당자 추가 user:@민수
 ```
 

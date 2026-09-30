@@ -1,4 +1,7 @@
 import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   type ChatInputCommandInteraction,
   type Guild,
   MessageFlags,
@@ -7,21 +10,18 @@ import {
 } from "discord.js";
 import { config } from "../config.js";
 import * as db from "../db.js";
+import { createSignInUrl } from "../github/oauth.js";
 
 const REPO_PATTERN = /^[\w.-]+\/[\w.-]+$/;
-const GITHUB_LOGIN_PATTERN = /^[a-z\d](?:[a-z\d-]{0,38})$/i;
 
 export const commandDefinitions = [
   new SlashCommandBuilder()
     .setName("연결")
-    .setDescription("디스코드 계정과 GitHub 계정을 연결해요")
-    .addStringOption((o) => o.setName("github").setDescription("GitHub 아이디 (예: octocat)").setRequired(true))
-    .addUserOption((o) => o.setName("user").setDescription("다른 사람을 연결할 때만 선택 (서버 관리 권한 필요)")),
+    .setDescription("GitHub 로그인으로 내 디스코드 계정과 GitHub 계정을 연결해요"),
 
   new SlashCommandBuilder()
     .setName("연결해제")
-    .setDescription("내 GitHub 계정 연결을 해제해요")
-    .addUserOption((o) => o.setName("user").setDescription("다른 사람을 해제할 때만 선택 (서버 관리 권한 필요)")),
+    .setDescription("내 GitHub 계정 연결을 해제해요"),
 
   new SlashCommandBuilder()
     .setName("레포")
@@ -71,11 +71,11 @@ const HELP = [
   "**지본 사용법** 🌏",
   "",
   "**1. 레포 연결** (채널 관리 권한 필요)",
-  "`/레포 등록 repo:owner/name` 이 채널로 PR 알림을 받아요",
+  "`/레포 등록 repo:owner/name` → GitHub 로그인으로 레포 쓰기 권한을 확인한 뒤 이 채널로 PR 알림을 받아요",
   "레포에 지본 GitHub App이 설치돼 있어야 해요 (설치 링크는 등록 답장에 있어요)",
   "",
   "**2. 계정 연결** (각자 한 번)",
-  "`/연결 github:내아이디` GitHub 리뷰어 지정 시 디스코드로 태그돼요",
+  "`/연결` → GitHub 로그인. GitHub 리뷰어로 지정되면 디스코드로 태그돼요",
   "",
   "**3. 담당자 지정**",
   "`/담당자 추가 user:@이름` PR에 GitHub 리뷰어가 없으면 담당자를 태그해요",
@@ -94,9 +94,14 @@ function installUrl(): string | undefined {
   return config.githubAppInstallUrl ?? db.getSetting("app_install_url");
 }
 
-function canManageOthers(i: ChatInputCommandInteraction): boolean {
-  return i.memberPermissions?.has(PermissionFlagsBits.ManageGuild) ?? false;
+function signInButton(url: string, label: string) {
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(url).setLabel(label),
+  );
 }
+
+const OAUTH_NOT_READY =
+  "GitHub 로그인이 아직 설정되지 않았어요. 봇 운영자에게 README의 'GitHub 로그인 설정'을 부탁하세요.";
 
 export async function handleCommand(i: ChatInputCommandInteraction): Promise<void> {
   if (!i.inGuild()) {
@@ -107,28 +112,24 @@ export async function handleCommand(i: ChatInputCommandInteraction): Promise<voi
 
   switch (i.commandName) {
     case "연결": {
-      const login = i.options.getString("github", true).trim().replace(/^@/, "");
-      const target = i.options.getUser("user") ?? i.user;
-      if (target.id !== i.user.id && !canManageOthers(i)) {
-        await i.reply({ content: "다른 사람을 연결하려면 서버 관리 권한이 필요해요.", ...ephemeral });
+      const url = createSignInUrl({ kind: "link", discordId: i.user.id, discordTag: i.user.tag });
+      if (!url) {
+        await i.reply({ content: OAUTH_NOT_READY, ...ephemeral });
         return;
       }
-      if (!GITHUB_LOGIN_PATTERN.test(login)) {
-        await i.reply({ content: `\`${login}\`은(는) 올바른 GitHub 아이디가 아니에요.`, ...ephemeral });
-        return;
-      }
-      db.linkUser(target.id, login);
-      await i.reply({ content: `🔗 <@${target.id}> ↔ GitHub \`${login}\` 연결했어요.`, ...ephemeral });
+      const current = db.githubLoginFor(i.user.id);
+      await i.reply({
+        content:
+          (current ? `지금은 GitHub \`${current}\`와 연결돼 있어요.\n` : "") +
+          "아래 버튼으로 GitHub에 로그인하면 본인 계정이 확인되고 연결돼요. (10분 안에 눌러 주세요)",
+        components: [signInButton(url, "GitHub로 로그인해서 연결")],
+        ...ephemeral,
+      });
       return;
     }
 
     case "연결해제": {
-      const target = i.options.getUser("user") ?? i.user;
-      if (target.id !== i.user.id && !canManageOthers(i)) {
-        await i.reply({ content: "다른 사람을 해제하려면 서버 관리 권한이 필요해요.", ...ephemeral });
-        return;
-      }
-      const removed = db.unlinkUser(target.id);
+      const removed = db.unlinkUser(i.user.id);
       await i.reply({ content: removed ? "연결을 해제했어요." : "연결된 GitHub 계정이 없어요.", ...ephemeral });
       return;
     }
@@ -150,13 +151,32 @@ export async function handleCommand(i: ChatInputCommandInteraction): Promise<voi
         return;
       }
       if (sub === "등록") {
-        db.addRepoChannel(repo, i.channelId, i.guildId);
-        await i.reply(
-          `📦 \`${repo}\` PR 알림을 이 채널로 보낼게요.\n` +
-            (installUrl()
-              ? `아직 이 레포에 지본 GitHub App을 설치하지 않았다면 👉 [설치하기](${installUrl()})`
-              : "GitHub 레포 Settings → Webhooks에 봇 주소가 등록돼 있는지 확인하세요."),
-        );
+        if (db.reposForChannel(i.channelId).includes(repo.toLowerCase())) {
+          await i.reply({ content: `\`${repo}\`는 이미 이 채널에 연결돼 있어요.`, ...ephemeral });
+          return;
+        }
+        // Anyone could type any repo name, so require proof of write access before sending its PRs here.
+        const url = createSignInUrl({
+          kind: "register",
+          discordId: i.user.id,
+          discordTag: i.user.tag,
+          repo,
+          channelId: i.channelId,
+          guildId: i.guildId,
+        });
+        if (!url) {
+          await i.reply({ content: OAUTH_NOT_READY, ...ephemeral });
+          return;
+        }
+        const install = installUrl();
+        await i.reply({
+          content:
+            `\`${repo}\`를 연결하려면 이 레포에 **쓰기 권한**이 있는지 확인해야 해요.\n` +
+            "아래 버튼으로 GitHub에 로그인하면 확인 후 바로 등록돼요. (10분 안에 눌러 주세요)" +
+            (install ? `\n레포에 지본 GitHub App이 아직 없다면 먼저 👉 [설치하기](${install})` : ""),
+          components: [signInButton(url, "GitHub로 권한 확인하고 등록")],
+          ...ephemeral,
+        });
       } else {
         const removed = db.removeRepoChannel(repo, i.channelId);
         await i.reply(removed ? `\`${repo}\` 알림을 해제했어요.` : `이 채널에 \`${repo}\`는 연결돼 있지 않아요.`);
