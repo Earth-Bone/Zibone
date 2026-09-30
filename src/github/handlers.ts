@@ -71,6 +71,13 @@ function save(repo: string, pr: GhPullRequest): void {
 }
 
 export async function handleEvent(event: string, payload: unknown): Promise<void> {
+  const p = payload as { action?: string; repository?: { full_name?: string } };
+  const repo = p.repository?.full_name ?? "?";
+  const channels = db.channelsForRepo(repo);
+  console.log(
+    `GitHub ${event}.${p.action} from ${repo} -> ${channels.length} channel(s)` +
+      (channels.length === 0 ? " (run /레포 등록 repo:" + repo + " in Discord)" : ""),
+  );
   if (event === "pull_request") return handlePullRequest(payload as PullRequestEvent);
   if (event === "pull_request_review") return handleReview(payload as PullRequestReviewEvent);
 }

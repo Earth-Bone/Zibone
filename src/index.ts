@@ -19,6 +19,7 @@ client.on(Events.GuildCreate, (guild) => {
 
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
+  console.log(`/${interaction.commandName} ${interaction.options.getSubcommand(false) ?? ""} by ${interaction.user.tag} in #${interaction.channelId}`);
   try {
     await handleCommand(interaction);
   } catch (err) {
