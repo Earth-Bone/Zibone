@@ -118,7 +118,7 @@ Webhook 주소, 권한(Pull requests: Read-only), 이벤트(`Pull request`, `Pul
 `/setup`으로 새로 만든 App은 자동으로 설정돼요. 그 전에 만든 App이면 아래를 한 번 해 주세요.
 
 1. GitHub → Settings → Developer settings → GitHub Apps → 지본 App → **Edit**
-2. **Callback URL**에 `https://<도메인>/auth/github/callback` 추가 → Save changes
+2. **Identifying and authorizing users** 섹션의 **Redirect URI**에 `https://<도메인>/auth/github/callback` 입력 (칸이 없으면 **Add redirect URI**) → Save changes
 3. 같은 화면의 **Client ID** 복사, **Generate a new client secret**으로 secret 생성
 4. Railway Variables에 추가 후 Deploy
 
