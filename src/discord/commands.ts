@@ -5,6 +5,7 @@ import {
   PermissionFlagsBits,
   SlashCommandBuilder,
 } from "discord.js";
+import { config } from "../config.js";
 import * as db from "../db.js";
 
 const REPO_PATTERN = /^[\w.-]+\/[\w.-]+$/;
@@ -71,6 +72,7 @@ const HELP = [
   "",
   "**1. 레포 연결** (채널 관리 권한 필요)",
   "`/레포 등록 repo:owner/name` 이 채널로 PR 알림을 받아요",
+  "레포에 지본 GitHub App이 설치돼 있어야 해요 (설치 링크는 등록 답장에 있어요)",
   "",
   "**2. 계정 연결** (각자 한 번)",
   "`/연결 github:내아이디` GitHub 리뷰어 지정 시 디스코드로 태그돼요",
@@ -147,7 +149,9 @@ export async function handleCommand(i: ChatInputCommandInteraction): Promise<voi
         db.addRepoChannel(repo, i.channelId, i.guildId);
         await i.reply(
           `📦 \`${repo}\` PR 알림을 이 채널로 보낼게요.\n` +
-            "GitHub 레포 Settings → Webhooks에 봇 주소가 등록돼 있는지 확인하세요.",
+            (config.githubAppInstallUrl
+              ? `아직 이 레포에 지본 GitHub App을 설치하지 않았다면 👉 [설치하기](${config.githubAppInstallUrl})`
+              : "GitHub 레포 Settings → Webhooks에 봇 주소가 등록돼 있는지 확인하세요."),
         );
       } else {
         const removed = db.removeRepoChannel(repo, i.channelId);

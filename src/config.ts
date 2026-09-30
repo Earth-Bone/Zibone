@@ -26,4 +26,6 @@ export const config = {
   reminderStartHour: number("REMINDER_START_HOUR", 9),
   reminderEndHour: number("REMINDER_END_HOUR", 22),
   timezone: process.env.TIMEZONE || "Asia/Seoul",
+  // e.g. https://github.com/apps/zibone/installations/new, shown in /레포 등록 replies
+  githubAppInstallUrl: process.env.GITHUB_APP_INSTALL_URL?.trim() || undefined,
 };

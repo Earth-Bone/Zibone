@@ -27,7 +27,7 @@
 
 | 명령어 | 설명 |
 | --- | --- |
-| `/레포 등록 repo:owner/name` | 이 채널로 해당 레포 PR 알림을 받아요 (채널 관리 권한 필요) |
+| `/레포 등록 repo:owner/name` | 이 채널로 해당 레포 PR 알림을 받아요 (채널 관리 권한 필요, 레포에 GitHub App 설치 필요) |
 | `/레포 해제 repo:owner/name` · `/레포 목록` | 연결 해제 / 연결된 레포 보기 |
 | `/연결 github:아이디` | 내 디스코드 계정과 GitHub 계정 연결 (각자 한 번) |
 | `/연결 github:아이디 user:@사람` | 다른 사람 대신 연결 (서버 관리 권한 필요) |
@@ -73,19 +73,38 @@
 4. **Settings → Networking → Generate Domain** → 예: `zibone-production.up.railway.app`
 5. 브라우저에서 `https://<도메인>/health` 접속해서 `ok` 나오면 성공
 
-### 3. GitHub 레포에 Webhook 연결
+### 3. GitHub App 만들기 (운영자, 한 번만)
 
-알림을 받을 레포마다 한 번씩 설정해요 (조직 전체에 걸려면 Organization Settings에서 한 번만 해도 돼요).
+지본은 GitHub App으로 PR 이벤트를 받아요. App을 설치한 레포에는 Webhook이 자동으로 연결돼서, 레포마다 Webhook을 따로 만들 필요가 없어요. 토큰이나 Private Key도 필요 없어요.
 
-1. 레포 **Settings → Webhooks → Add webhook**
+1. GitHub 프로필 → **Settings → Developer settings → GitHub Apps → New GitHub App**
 2. 입력값
-   - Payload URL: `https://<도메인>/github/webhook`
-   - Content type: **`application/json`**
-   - Secret: Railway에 넣은 `GITHUB_WEBHOOK_SECRET`과 같은 값
-   - Which events: **Let me select individual events** → `Pull requests`, `Pull request reviews` 체크
-3. 저장 후 Recent Deliveries에 초록 체크(ping)가 뜨면 연결 완료
+   - GitHub App name: `Zibone` (이미 쓰이는 이름이면 다른 이름)
+   - Homepage URL: 이 레포 주소
+   - **Webhook**: Active 체크
+     - Webhook URL: `https://<도메인>/github/webhook`
+     - Webhook secret: Railway의 `GITHUB_WEBHOOK_SECRET`과 같은 값
+   - **Permissions → Repository permissions → Pull requests: Read-only**
+   - **Subscribe to events**: `Pull request`, `Pull request review`
+   - **Where can this GitHub App be installed?**: `Any account`
+3. **Create GitHub App** → 생성된 App 페이지에서 Logo에 `assets/avatar.png` 업로드
+4. App 페이지의 **Public link**(`https://github.com/apps/<앱이름>`) 뒤에 `/installations/new`를 붙여 Railway 변수에 추가
 
-### 4. 디스코드에서 설정
+   | 이름 | 값 |
+   | --- | --- |
+   | `GITHUB_APP_INSTALL_URL` | `https://github.com/apps/<앱이름>/installations/new` |
+
+   이 링크는 `/레포 등록` 답장에 표시돼요.
+
+### 4. 레포에 App 설치 (레포 관리자, 레포마다 한 번)
+
+1. 설치 링크 열기 → 설치할 계정/올가 선택
+2. **All repositories** 또는 **Only select repositories**에서 레포 선택 → **Install**
+3. 올가 관리자가 아니면 설치 요청이 관리자에게 가고, 승인되면 설치돼요.
+
+레포에 예전에 직접 만든 Webhook이 있다면 지워도 돼요. 둘 다 있어도 지본이 중복 이벤트를 걸러서 알림은 한 번만 가요.
+
+### 5. 디스코드에서 설정
 
 ```
 /레포 등록 repo:minwoo-3/my-app
