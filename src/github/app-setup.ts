@@ -48,7 +48,7 @@ export function setupRouter(): Router {
     const base = baseUrl(req);
     const manifest = {
       name,
-      url: "https://github.com/minwoo-3/Zibone",
+      url: "https://github.com/Earth-Bone/Zibone",
       description: "PR이 올라오면 디스코드에서 리뷰어를 태그해 주는 봇",
       hook_attributes: { url: `${base}/github/webhook`, active: true },
       redirect_url: `${base}/setup/callback`,

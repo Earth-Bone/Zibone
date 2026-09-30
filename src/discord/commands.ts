@@ -31,7 +31,7 @@ export const commandDefinitions = [
       s
         .setName("등록")
         .setDescription("이 채널에 레포 PR 알림을 연결해요")
-        .addStringOption((o) => o.setName("repo").setDescription("owner/name 형식 (예: minwoo-3/my-app)").setRequired(true)),
+        .addStringOption((o) => o.setName("repo").setDescription("owner/name 형식 (예: Earth-Bone/my-app)").setRequired(true)),
     )
     .addSubcommand((s) =>
       s

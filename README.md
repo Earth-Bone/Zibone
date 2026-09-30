@@ -138,7 +138,7 @@ Webhook 주소, 권한(Pull requests: Read-only), 이벤트(`Pull request`, `Pul
 ### 5. 디스코드에서 설정
 
 ```
-/레포 등록 repo:minwoo-3/my-app
+/레포 등록 repo:Earth-Bone/my-app
 /연결                               ← 팀원 각자, GitHub 로그인
 /담당자 추가 user:@민수
 ```
