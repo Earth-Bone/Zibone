@@ -24,10 +24,11 @@ db.exec(`
     PRIMARY KEY (repo, channel_id)
   );
 
-  -- People to mention in a channel when a PR has no GitHub reviewers assigned
+  -- People or roles to mention in a channel when a PR has no GitHub reviewers assigned
   CREATE TABLE IF NOT EXISTS channel_assignees (
     channel_id TEXT NOT NULL,
     discord_id TEXT NOT NULL,
+    kind       TEXT NOT NULL DEFAULT 'user', -- 'user' or 'role'
     PRIMARY KEY (channel_id, discord_id)
   );
 
@@ -66,6 +67,12 @@ db.exec(`
 // Links made before GitHub sign-in existed were self-declared, so drop them once.
 if (!db.prepare("SELECT 1 FROM settings WHERE key = 'links_verified'").get()) {
   db.exec("DELETE FROM user_links; INSERT INTO settings (key, value) VALUES ('links_verified', '1');");
+}
+
+// Assignees could only be users before roles were supported.
+const assigneeColumns = db.prepare("PRAGMA table_info(channel_assignees)").all() as { name: string }[];
+if (!assigneeColumns.some((c) => c.name === "kind")) {
+  db.exec("ALTER TABLE channel_assignees ADD COLUMN kind TEXT NOT NULL DEFAULT 'user'");
 }
 
 // GitHub logins and repo names are case-insensitive, so store them lowercased.
@@ -146,11 +153,13 @@ export function reposForChannel(channelId: string): string[] {
 
 // ---- channel assignees ----
 
-export function addAssignee(channelId: string, discordId: string): boolean {
+export type AssigneeKind = "user" | "role";
+
+export function addAssignee(channelId: string, discordId: string, kind: AssigneeKind): boolean {
   return (
     db
-      .prepare("INSERT OR IGNORE INTO channel_assignees (channel_id, discord_id) VALUES (?, ?)")
-      .run(channelId, discordId).changes > 0
+      .prepare("INSERT OR IGNORE INTO channel_assignees (channel_id, discord_id, kind) VALUES (?, ?, ?)")
+      .run(channelId, discordId, kind).changes > 0
   );
 }
 
@@ -165,11 +174,15 @@ export function clearAssignees(channelId: string): number {
   return Number(db.prepare("DELETE FROM channel_assignees WHERE channel_id = ?").run(channelId).changes);
 }
 
-export function assigneesForChannel(channelId: string): string[] {
-  const rows = db.prepare("SELECT discord_id FROM channel_assignees WHERE channel_id = ?").all(channelId) as {
+export function assigneesForChannel(channelId: string): { users: string[]; roles: string[] } {
+  const rows = db.prepare("SELECT discord_id, kind FROM channel_assignees WHERE channel_id = ?").all(channelId) as {
     discord_id: string;
+    kind: AssigneeKind;
   }[];
-  return rows.map((r) => r.discord_id);
+  return {
+    users: rows.filter((r) => r.kind === "user").map((r) => r.discord_id),
+    roles: rows.filter((r) => r.kind === "role").map((r) => r.discord_id),
+  };
 }
 
 // ---- pull requests ----
