@@ -71,11 +71,12 @@ export async function notifyReviewers(opts: {
 
   for (const channelId of db.channelsForRepo(pr.repo)) {
     let mentions = ids;
+    let roles: string[] = [];
     if (logins.length === 0 && opts.useChannelAssigneesAsFallback !== false) {
-      mentions = db.assigneesForChannel(channelId);
+      ({ users: mentions, roles } = db.assigneesForChannel(channelId));
     }
     mentions = mentions.filter((id) => id !== authorId);
-    await send({ channelId, mentions, headline, embed: prEmbed(pr, color, unlinkedNote(unlinked)) });
+    await send({ channelId, mentions, roles, headline, embed: prEmbed(pr, color, unlinkedNote(unlinked)) });
   }
 }
 

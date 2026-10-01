@@ -52,18 +52,18 @@ export const commandDefinitions = [
 
   new SlashCommandBuilder()
     .setName("담당자")
-    .setDescription("이 채널에서 PR 알림 때 태그할 사람을 관리해요")
+    .setDescription("이 채널에서 PR 알림 때 태그할 사람이나 역할을 관리해요")
     .addSubcommand((s) =>
       s
         .setName("추가")
-        .setDescription("태그할 사람을 추가해요")
-        .addUserOption((o) => o.setName("user").setDescription("추가할 사람").setRequired(true)),
+        .setDescription("태그할 사람이나 역할을 추가해요")
+        .addMentionableOption((o) => o.setName("대상").setDescription("추가할 사람 또는 역할").setRequired(true)),
     )
     .addSubcommand((s) =>
       s
         .setName("제거")
         .setDescription("태그 대상에서 빼요")
-        .addUserOption((o) => o.setName("user").setDescription("뺄 사람").setRequired(true)),
+        .addMentionableOption((o) => o.setName("대상").setDescription("뺄 사람 또는 역할").setRequired(true)),
     )
     .addSubcommand((s) => s.setName("목록").setDescription("현재 태그 대상을 보여줘요"))
     .addSubcommand((s) => s.setName("초기화").setDescription("이 채널의 담당자를 모두 지워요")),
@@ -87,7 +87,7 @@ const HELP = [
   "`/연결` → GitHub 로그인. GitHub 리뷰어로 지정되면 디스코드로 태그돼요",
   "",
   "**3. 담당자 지정**",
-  "`/담당자 추가 user:@이름` PR에 GitHub 리뷰어가 없으면 담당자를 태그해요",
+  "`/담당자 추가 대상:@이름` 또는 `대상:@역할` PR에 GitHub 리뷰어가 없으면 담당자를 태그해요",
   "`/담당자 목록` · `/담당자 제거` · `/담당자 초기화`",
   "",
   "**알림이 가는 때**",
@@ -196,37 +196,51 @@ export async function handleCommand(i: ChatInputCommandInteraction): Promise<voi
     case "담당자": {
       const sub = i.options.getSubcommand();
       if (sub === "목록") {
-        const ids = db.assigneesForChannel(i.channelId);
-        const lines = ids.map((id) => {
-          const gh = db.githubLoginFor(id);
-          return `• <@${id}>${gh ? ` (GitHub \`${gh}\`)` : ""}`;
-        });
+        const { users, roles } = db.assigneesForChannel(i.channelId);
+        const lines = [
+          ...roles.map((id) => `• <@&${id}> (역할)`),
+          ...users.map((id) => {
+            const gh = db.githubLoginFor(id);
+            return `• <@${id}>${gh ? ` (GitHub \`${gh}\`)` : ""}`;
+          }),
+        ];
         await i.reply({
-          content: ids.length ? `👥 이 채널 담당자:\n${lines.join("\n")}` : "지정된 담당자가 없어요. `/담당자 추가`로 지정하세요.",
+          content: lines.length ? `👥 이 채널 담당자:\n${lines.join("\n")}` : "지정된 담당자가 없어요. `/담당자 추가`로 지정하세요.",
           allowedMentions: { parse: [] },
         });
         return;
       }
       if (sub === "초기화") {
         const count = db.clearAssignees(i.channelId);
-        await i.reply(`담당자 ${count}명을 모두 지웠어요.`);
+        await i.reply(`담당자 ${count}개를 모두 지웠어요.`);
         return;
       }
-      const user = i.options.getUser("user", true);
-      if (user.bot) {
+      const role = i.options.getRole("대상");
+      const user = role ? null : i.options.getUser("대상");
+      if (!role && !user) {
+        await i.reply({ content: "사람이나 역할을 골라 주세요.", ...ephemeral });
+        return;
+      }
+      if (user?.bot) {
         await i.reply({ content: "봇은 담당자로 지정할 수 없어요.", ...ephemeral });
         return;
       }
+      if (role?.id === i.guildId) {
+        await i.reply({ content: "@everyone은 담당자로 지정할 수 없어요.", ...ephemeral });
+        return;
+      }
+      const id = role ? role.id : user!.id;
+      const name = role ? `<@&${id}> 역할` : `<@${id}>님`;
       if (sub === "추가") {
-        const added = db.addAssignee(i.channelId, user.id);
+        const added = db.addAssignee(i.channelId, id, role ? "role" : "user");
         await i.reply({
-          content: added ? `✅ <@${user.id}>님을 담당자로 추가했어요.` : `<@${user.id}>님은 이미 담당자예요.`,
+          content: added ? `✅ ${name}을 담당자로 추가했어요.` : `${name}은 이미 담당자예요.`,
           allowedMentions: { parse: [] },
         });
       } else {
-        const removed = db.removeAssignee(i.channelId, user.id);
+        const removed = db.removeAssignee(i.channelId, id);
         await i.reply({
-          content: removed ? `<@${user.id}>님을 담당자에서 뺐어요.` : `<@${user.id}>님은 담당자가 아니에요.`,
+          content: removed ? `${name}을 담당자에서 뺐어요.` : `${name}은 담당자가 아니에요.`,
           allowedMentions: { parse: [] },
         });
       }
