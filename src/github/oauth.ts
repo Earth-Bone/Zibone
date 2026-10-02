@@ -7,18 +7,22 @@ import { send } from "../discord/client.js";
 import { escapeHtml as escape, page } from "./pages.js";
 
 /*
- * GitHub sign-in used to prove who someone is before we trust them:
- *   /연결        -> the Discord user proves which GitHub account is theirs
- *   /레포 등록   -> the Discord user proves they can push to the repo (and that the app is installed there)
+ * GitHub sign-in used by /레포 등록 for private repos: the Discord user proves they can push to the repo
+ * (and that the app is installed there). Public repos and account links need no sign-in.
  * The GitHub token is used once inside the callback and never stored.
  */
 
 const PENDING_TTL_MS = 10 * 60 * 1000;
 const CALLBACK_PATH = "/auth/github/callback";
 
-type PendingAction =
-  | { kind: "link"; discordId: string; discordTag: string }
-  | { kind: "register"; discordId: string; discordTag: string; repo: string; channelId: string; guildId: string };
+type PendingAction = {
+  kind: "register";
+  discordId: string;
+  discordTag: string;
+  repo: string;
+  channelId: string;
+  guildId: string;
+};
 
 const pending = new Map<string, PendingAction & { createdAt: number }>();
 
@@ -95,14 +99,8 @@ export function oauthRouter(): Router {
       return;
     }
 
-    // Signing in proves the GitHub identity, so both flows link the accounts.
+    // Signing in proves the GitHub identity, so link the accounts too.
     db.linkUser(action.discordId, login);
-
-    if (action.kind === "link") {
-      console.log(`Linked ${action.discordTag} to GitHub ${login}`);
-      res.send(done("🔗 연결 완료", `디스코드 <b>${escape(action.discordTag)}</b> ↔ GitHub <b>${escape(login)}</b>`));
-      return;
-    }
 
     // A GitHub App user token only sees repos where the app is installed, so 404 means "not installed or no access".
     const repo = await github<{ full_name?: string; permissions?: { push?: boolean; admin?: boolean } }>(
