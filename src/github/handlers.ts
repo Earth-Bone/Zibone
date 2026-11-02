@@ -106,8 +106,8 @@ async function handlePullRequest(e: PullRequestEvent): Promise<void> {
       if (pr.draft) return;
       const headline =
         e.action === "ready_for_review"
-          ? "📝 Draft PR이 리뷰 가능 상태가 됐어요. 리뷰 부탁드려요!"
-          : "🔔 새 PR이 올라왔어요. 리뷰 부탁드려요!";
+          ? "📝 Draft PR이 리뷰 가능 상태가 됐어요. PR 확인해 주세요!"
+          : "🔔 새 PR이 올라왔어요! PR 확인해 주세요!";
       await notifyReviewers({ pr: info, reviewerLogins: requestedLogins(pr), headline, color: Colors.opened });
       return;
     }
