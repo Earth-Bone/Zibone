@@ -5,13 +5,11 @@ import { client, send } from "./discord/client.js";
 export const Colors = {
   opened: 0x2da44e,
   push: 0x0969da,
-  requested: 0xbf8700,
   approved: 0x2da44e,
   changes: 0xcf222e,
   commented: 0x6e7781,
   merged: 0x8250df,
   closed: 0x6e7781,
-  reminder: 0xbf8700,
 } as const;
 
 export interface PrInfo {
@@ -62,7 +60,6 @@ export async function notifyReviewers(opts: {
   reviewerLogins: string[];
   headline: string;
   color: number;
-  useChannelAssigneesAsFallback?: boolean;
 }): Promise<void> {
   const { pr, headline, color } = opts;
   const authorId = db.discordIdFor(pr.author);
@@ -72,7 +69,7 @@ export async function notifyReviewers(opts: {
   for (const channelId of db.channelsForRepo(pr.repo)) {
     let mentions = ids;
     let roles: string[] = [];
-    if (logins.length === 0 && opts.useChannelAssigneesAsFallback !== false) {
+    if (logins.length === 0) {
       ({ users: mentions, roles } = db.assigneesForChannel(channelId));
     }
     mentions = mentions.filter((id) => id !== authorId);
@@ -80,23 +77,9 @@ export async function notifyReviewers(opts: {
   }
 }
 
-/** Mentions the PR author, e.g. after a review is submitted. */
-export async function notifyAuthor(opts: { pr: PrInfo; headline: string; color: number; extra?: string }): Promise<void> {
-  const authorId = db.discordIdFor(opts.pr.author);
-  const note = authorId ? opts.extra : [opts.extra, unlinkedNote([opts.pr.author])].filter(Boolean).join("\n");
+/** Posts without mentioning anyone: pushes, reviews, merged / closed. */
+export async function notifyQuiet(opts: { pr: PrInfo; headline: string; color: number; extra?: string }): Promise<void> {
   for (const channelId of db.channelsForRepo(opts.pr.repo)) {
-    await send({
-      channelId,
-      mentions: authorId ? [authorId] : [],
-      headline: opts.headline,
-      embed: prEmbed(opts.pr, opts.color, note || undefined),
-    });
-  }
-}
-
-/** Posts without mentioning anyone (merged / closed). */
-export async function notifyQuiet(opts: { pr: PrInfo; headline: string; color: number }): Promise<void> {
-  for (const channelId of db.channelsForRepo(opts.pr.repo)) {
-    await send({ channelId, mentions: [], headline: opts.headline, embed: prEmbed(opts.pr, opts.color) });
+    await send({ channelId, mentions: [], headline: opts.headline, embed: prEmbed(opts.pr, opts.color, opts.extra) });
   }
 }

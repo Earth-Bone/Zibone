@@ -3,7 +3,6 @@ import { config } from "./config.js";
 import { client } from "./discord/client.js";
 import { handleCommand, registerCommands } from "./discord/commands.js";
 import { startWebhookServer } from "./github/webhook.js";
-import { startReminders } from "./reminder.js";
 
 client.once(Events.ClientReady, async (c) => {
   console.log(`Logged in to Discord as ${c.user.tag}`);
@@ -11,13 +10,12 @@ client.once(Events.ClientReady, async (c) => {
   for (const guild of c.guilds.cache.values()) {
     await registerCommands(guild).catch((err) => console.error(`Command registration failed in ${guild.name}:`, err));
   }
-  startReminders();
 });
 
 // Shown on the bot's profile. Only filled in when empty, so edits made in the Developer Portal win.
 const DESCRIPTION = [
   "🌏 지본은 GitHub PR 리뷰 요청을 대신 해주는 봇이에요.",
-  "PR이 올라오면 디스코드 채널에 링크와 함께 리뷰어를 태그하고, 새 커밋이나 리뷰가 올라올 때도 필요한 사람을 다시 불러줘요. 리뷰가 늦어지면 리마인더까지!",
+  "PR이 올라오면 디스코드 채널에 링크와 함께 리뷰어를 태그하고, 새 커밋이나 리뷰, 머지는 태그 없이 알려줘요.",
   '이제 "리뷰 좀 해주세요" 매번 말하지 마세요.',
   "",
   "/도움말 로 사용법을 확인하세요.",
