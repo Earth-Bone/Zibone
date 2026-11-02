@@ -6,12 +6,12 @@ export interface Notification {
   channelId: string;
   mentions: string[];
   roles?: string[];
-  /** Not posted; the message shows only mentions and the embed. */
+  /** Short line posted after the mentions, e.g. "PR 확인해 주세요!". */
   headline: string;
   embed: EmbedBuilder;
 }
 
-export async function send({ channelId, mentions, roles = [], embed }: Notification): Promise<void> {
+export async function send({ channelId, mentions, roles = [], headline, embed }: Notification): Promise<void> {
   const unique = [...new Set(mentions)];
   const channel = await client.channels.fetch(channelId).catch(() => null);
   if (!channel || !channel.isSendable()) {
@@ -19,7 +19,9 @@ export async function send({ channelId, mentions, roles = [], embed }: Notificat
     return;
   }
   const uniqueRoles = [...new Set(roles)];
-  const mentionLine = [...unique.map((id) => `<@${id}>`), ...uniqueRoles.map((id) => `<@&${id}>`)].join(" ");
+  const mentionLine = [...unique.map((id) => `<@${id}>`), ...uniqueRoles.map((id) => `<@&${id}>`), headline]
+    .filter(Boolean)
+    .join(" ");
   // A channel the bot can no longer post in must not stop the other channels from being notified.
   await channel
     .send({
