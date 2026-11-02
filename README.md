@@ -9,16 +9,12 @@
 ---
 
 > "PR 올렸어요, 리뷰 부탁드려요 @민수 @지영"
-> "아직 안 보셨나요…? @민수"
-> "수정 반영했어요! 다시 봐주세요 @민수 @지영"
 
 이런 메시지, 이제 지본이 대신 보내요.
 
 - ✔️ PR이 올라오면 PR 링크와 함께 리뷰어를 자동으로 태그해요
-- ✔️ 새 커밋을 push하면 리뷰어를 다시 불러요
-- ✔️ Approve·변경 요청·코멘트가 달리면 작성자에게 알려요
-- ✔️ GitHub에서 리뷰어를 지정하면 그 사람만 콕 집어 태그해요
-- ✔️ 리뷰가 24시간 동안 없으면 리마인더를 보내요
+- ✔️ GitHub에서 리뷰어를 지정해 두면 그 사람만 콕 집어 태그해요
+- ✔️ 새 커밋, 리뷰, 머지는 태그 없이 채널에 조용히 알려요
 - ✔️ 채널마다 태그할 담당자(사람 또는 역할)를 `/담당자` 명령어로 직접 골라요
 - 🔒 비공개 레포는 GitHub 로그인으로 쓰기 권한을 확인해서, 남의 레포 알림은 받을 수 없어요
 
@@ -40,15 +36,13 @@ GitHub에서는 평소처럼 일하세요. 부르는 건 지본이 할게요.
 | 상황 | 디스코드 알림 | 태그 대상 |
 | --- | --- | --- |
 | PR 생성 / Draft 해제 / 다시 열림 | 🔔 PR 링크 + 제목 + 브랜치 | GitHub Reviewers, 없으면 채널 담당자 |
-| 새 커밋 push | 🔄 변경사항 확인 요청 | Reviewers + 이전에 리뷰한 사람, 없으면 담당자 |
-| GitHub에서 Reviewers 지정 / Re-request review | 👀 리뷰 요청 | 요청받은 사람 |
-| 리뷰 제출 (Approve / Changes requested / Comment) | ✅ 🛠️ 💬 + 리뷰 내용 | PR 작성자 |
-| 리뷰 없이 방치 (기본 24시간) | ⏰ 리마인더 | 아직 리뷰 안 한 사람 |
+| 새 커밋 push | 🔄 새 커밋 알림 | 없음 |
+| 리뷰 제출 (Approve / Changes requested / Comment) | ✅ 🛠️ 💬 + 리뷰 내용 | 없음 |
 | 머지 / 닫힘 | 🎉 🚫 | 없음 |
 
 - 짧은 시간에 여러 번 push 해도 5분에 한 번만 알려요.
-- PR 작성자는 자기 PR 알림에서 태그되지 않아요.
-- 리마인더는 `REMINDER_START_HOUR`~`REMINDER_END_HOUR` 사이에만 보내요 (기본 9시~22시).
+- 태그는 PR이 올라왔을 때만 해요. PR 작성자는 태그되지 않아요.
+- 닫히거나 머지된 PR에 달린 리뷰는 알리지 않아요.
 
 ## 디스코드 명령어
 
@@ -94,7 +88,6 @@ GitHub에서는 평소처럼 일하세요. 부르는 건 지본이 할게요.
    | `DISCORD_TOKEN` | 1단계에서 복사한 봇 토큰 |
    | `GITHUB_WEBHOOK_SECRET` | 아무 긴 랜덤 문자열 (예: `openssl rand -hex 32` 결과) |
    | `DATABASE_PATH` | `/data/bot.db` |
-   | `REMINDER_HOURS` | `24` (선택, `0`이면 리마인더 끔) |
 
 3. 서비스 우클릭 → **Attach Volume** → Mount path `/data`
    (볼륨이 없으면 재배포할 때 담당자·연결 설정이 날아가요)
@@ -169,11 +162,10 @@ docker run -d --name zibone --env-file .env -e DATABASE_PATH=/data/bot.db -v zib
 
 ```
 src/
-  index.ts             진입점: 디스코드 로그인 + Webhook 서버 + 리마인더
+  index.ts             진입점: 디스코드 로그인 + Webhook 서버
   config.ts            환경변수
   db.ts                SQLite (node:sqlite) 저장소
   notify.ts            누구를 태그할지 결정하고 메시지 생성
-  reminder.ts          방치된 PR 리마인더
   discord/client.ts    디스코드 클라이언트, 메시지 전송
   discord/commands.ts  슬래시 명령어
   github/webhook.ts    Webhook 수신 + 서명 검증

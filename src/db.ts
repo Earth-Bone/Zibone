@@ -32,30 +32,6 @@ db.exec(`
     PRIMARY KEY (channel_id, discord_id)
   );
 
-  -- Open pull requests, tracked for reminders
-  CREATE TABLE IF NOT EXISTS pull_requests (
-    repo                TEXT NOT NULL,
-    number              INTEGER NOT NULL,
-    title               TEXT NOT NULL,
-    url                 TEXT NOT NULL,
-    author              TEXT NOT NULL,
-    head_ref            TEXT NOT NULL,
-    base_ref            TEXT NOT NULL,
-    draft               INTEGER NOT NULL DEFAULT 0,
-    requested_reviewers TEXT NOT NULL DEFAULT '[]',
-    last_activity_at    INTEGER NOT NULL,
-    last_reminded_at    INTEGER,
-    PRIMARY KEY (repo, number)
-  );
-
-  -- Latest review state per reviewer, reset whenever new commits are pushed
-  CREATE TABLE IF NOT EXISTS reviews (
-    repo         TEXT NOT NULL,
-    number       INTEGER NOT NULL,
-    github_login TEXT NOT NULL,
-    state        TEXT NOT NULL,
-    PRIMARY KEY (repo, number, github_login)
-  );
 
   -- Values created at runtime, e.g. the GitHub App made through /setup
   CREATE TABLE IF NOT EXISTS settings (
@@ -75,22 +51,11 @@ if (!assigneeColumns.some((c) => c.name === "kind")) {
   db.exec("ALTER TABLE channel_assignees ADD COLUMN kind TEXT NOT NULL DEFAULT 'user'");
 }
 
+// Pull requests and reviews were only tracked for reminders, which were removed.
+db.exec("DROP TABLE IF EXISTS pull_requests; DROP TABLE IF EXISTS reviews;");
+
 // GitHub logins and repo names are case-insensitive, so store them lowercased.
 const lower = (s: string) => s.toLowerCase();
-
-export interface PullRequestRow {
-  repo: string;
-  number: number;
-  title: string;
-  url: string;
-  author: string;
-  head_ref: string;
-  base_ref: string;
-  draft: number;
-  requested_reviewers: string;
-  last_activity_at: number;
-  last_reminded_at: number | null;
-}
 
 // ---- user links ----
 
@@ -183,82 +148,6 @@ export function assigneesForChannel(channelId: string): { users: string[]; roles
     users: rows.filter((r) => r.kind === "user").map((r) => r.discord_id),
     roles: rows.filter((r) => r.kind === "role").map((r) => r.discord_id),
   };
-}
-
-// ---- pull requests ----
-
-export function upsertPullRequest(pr: {
-  repo: string;
-  number: number;
-  title: string;
-  url: string;
-  author: string;
-  headRef: string;
-  baseRef: string;
-  draft: boolean;
-  requestedReviewers: string[];
-}): void {
-  db.prepare(
-    `INSERT INTO pull_requests
-       (repo, number, title, url, author, head_ref, base_ref, draft, requested_reviewers, last_activity_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-     ON CONFLICT(repo, number) DO UPDATE SET
-       title = excluded.title,
-       url = excluded.url,
-       head_ref = excluded.head_ref,
-       base_ref = excluded.base_ref,
-       draft = excluded.draft,
-       requested_reviewers = excluded.requested_reviewers,
-       last_activity_at = excluded.last_activity_at`,
-  ).run(
-    lower(pr.repo),
-    pr.number,
-    pr.title,
-    pr.url,
-    lower(pr.author),
-    pr.headRef,
-    pr.baseRef,
-    pr.draft ? 1 : 0,
-    JSON.stringify(pr.requestedReviewers.map(lower)),
-    Date.now(),
-  );
-}
-
-export function deletePullRequest(repo: string, number: number): void {
-  db.prepare("DELETE FROM pull_requests WHERE repo = ? AND number = ?").run(lower(repo), number);
-  db.prepare("DELETE FROM reviews WHERE repo = ? AND number = ?").run(lower(repo), number);
-}
-
-export function openPullRequests(): PullRequestRow[] {
-  return db.prepare("SELECT * FROM pull_requests WHERE draft = 0").all() as unknown as PullRequestRow[];
-}
-
-export function markReminded(repo: string, number: number): void {
-  db.prepare("UPDATE pull_requests SET last_reminded_at = ? WHERE repo = ? AND number = ?").run(
-    Date.now(),
-    lower(repo),
-    number,
-  );
-}
-
-// ---- reviews ----
-
-export function recordReview(repo: string, number: number, githubLogin: string, state: string): void {
-  db.prepare(
-    "INSERT INTO reviews (repo, number, github_login, state) VALUES (?, ?, ?, ?) " +
-      "ON CONFLICT(repo, number, github_login) DO UPDATE SET state = excluded.state",
-  ).run(lower(repo), number, lower(githubLogin), state);
-}
-
-export function clearReviews(repo: string, number: number): void {
-  db.prepare("DELETE FROM reviews WHERE repo = ? AND number = ?").run(lower(repo), number);
-}
-
-export function reviewersWhoReviewed(repo: string, number: number): string[] {
-  const rows = db
-    .prepare("SELECT github_login FROM reviews WHERE repo = ? AND number = ?")
-    .all(lower(repo), number) as { github_login: string }[];
-  return rows.map((r) => r.github_login);
 }
 
 // ---- settings ----

@@ -20,10 +20,13 @@ export async function send({ channelId, mentions, roles = [], embed }: Notificat
   }
   const uniqueRoles = [...new Set(roles)];
   const mentionLine = [...unique.map((id) => `<@${id}>`), ...uniqueRoles.map((id) => `<@&${id}>`)].join(" ");
-  await channel.send({
-    content: mentionLine || undefined,
-    embeds: [embed],
-    // Only ping the users and roles we explicitly chose; never @everyone or anything from PR titles.
-    allowedMentions: { users: unique, roles: uniqueRoles, parse: [] },
-  });
+  // A channel the bot can no longer post in must not stop the other channels from being notified.
+  await channel
+    .send({
+      content: mentionLine || undefined,
+      embeds: [embed],
+      // Only ping the users and roles we explicitly chose; never @everyone or anything from PR titles.
+      allowedMentions: { users: unique, roles: uniqueRoles, parse: [] },
+    })
+    .catch((err) => console.warn(`Cannot send to channel ${channelId}: ${err instanceof Error ? err.message : err}`));
 }

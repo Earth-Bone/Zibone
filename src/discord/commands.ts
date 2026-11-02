@@ -118,11 +118,7 @@ const HELP = [
   "",
   "**알림이 가는 때**",
   "• PR 생성 / Draft 해제 → 리뷰어(없으면 담당자) 태그",
-  "• 새 커밋 push → 리뷰어와 이전 리뷰 남긴 사람 태그",
-  "• GitHub에서 Reviewers 지정 또는 Re-request review → 그 사람 태그",
-  "• 리뷰 제출(Approve / Changes requested / Comment) → PR 작성자 태그",
-  "• 리뷰 없이 오래 방치 → 리마인더",
-  "• 머지 / 닫힘 → 태그 없이 알림",
+  "• 새 커밋 push · 리뷰 제출 · 머지 / 닫힘 → 태그 없이 알림",
 ].join("\n");
 
 function installUrl(): string | undefined {
