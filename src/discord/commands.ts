@@ -3,7 +3,6 @@ import {
   ButtonBuilder,
   ButtonStyle,
   type ChatInputCommandInteraction,
-  EmbedBuilder,
   type Guild,
   MessageFlags,
   SlashCommandBuilder,
@@ -331,7 +330,8 @@ export async function handleCommand(i: ChatInputCommandInteraction): Promise<voi
   }
 }
 
-const SCHOOL_COLOR = 0x0969da;
+const SCHOOL_NAME = "광주소프트웨어마이스터고등학교";
+const RULE = "-".repeat(30);
 const BAD_DATE = "날짜를 읽지 못했어요. `내일`, `11/10`, `2026-11-10`처럼 입력해 주세요.";
 
 async function handleSchool(i: ChatInputCommandInteraction): Promise<void> {
@@ -342,35 +342,42 @@ async function handleSchool(i: ChatInputCommandInteraction): Promise<void> {
   }
   await i.deferReply();
   try {
-    await i.editReply({ embeds: [i.commandName === "급식" ? await mealEmbed(date) : await timetableEmbed(i, date)] });
+    const text = i.commandName === "급식" ? await mealText(date) : await timetableText(i, date);
+    await i.editReply({ content: text, allowedMentions: { parse: [] } });
   } catch (err) {
     console.error(`/${i.commandName} NEIS request failed:`, err);
     await i.editReply("나이스에서 정보를 가져오지 못했어요. 잠시 후 다시 시도해 주세요.");
   }
 }
 
-async function mealEmbed(date: Date): Promise<EmbedBuilder> {
-  const meals = await neis.meals(date);
-  const embed = new EmbedBuilder().setColor(SCHOOL_COLOR).setTitle(`🍚 ${neis.formatDate(date)} 급식`);
-  if (meals.length === 0) return embed.setDescription("이날은 급식 정보가 없어요.");
-  return embed.addFields(
-    meals.map((m) => ({
-      name: m.calories ? `${m.name} · ${m.calories}` : m.name,
-      value: m.dishes.join("\n").slice(0, 1024) || "-",
-      inline: true,
-    })),
-  );
+const decimal = (n: number) => n.toLocaleString("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+
+function nutritionLines(n: neis.Nutrition): string[] {
+  return [
+    `에너지: ${decimal(n.energy)}kcal`,
+    `단백질: ${decimal(n.protein)}g`,
+    `칼슘: ${decimal(n.calcium)}mg`,
+    `철: ${decimal(n.iron)}mg`,
+  ];
 }
 
-async function timetableEmbed(i: ChatInputCommandInteraction, date: Date): Promise<EmbedBuilder> {
+async function mealText(date: Date): Promise<string> {
+  const meals = await neis.meals(date);
+  const lines = [`${neis.formatDate(date)} 식단표`, RULE];
+  if (meals.length === 0) return [...lines, "이날은 급식 정보가 없어요.", RULE].join("\n");
+  for (const m of meals) lines.push(m.name, ...m.dishes, ...nutritionLines(m.nutrition), RULE);
+  lines.push("일일 영양 정보", ...nutritionLines(neis.totalNutrition(meals)), RULE);
+  return lines.join("\n");
+}
+
+async function timetableText(i: ChatInputCommandInteraction, date: Date): Promise<string> {
   const grade = i.options.getInteger("학년") ?? 1;
   const classNumber = i.options.getInteger("반") ?? 1;
   const { periods, truncated } = await neis.timetable(date, grade, classNumber);
-  const embed = new EmbedBuilder()
-    .setColor(SCHOOL_COLOR)
-    .setTitle(`📚 ${grade}학년 ${classNumber}반 · ${neis.formatDate(date)} 시간표`);
-  if (periods.length === 0) return embed.setDescription("이날은 시간표 정보가 없어요.");
-  const lines = periods.map((p) => `**${p.period}교시** ${p.subject}`);
-  if (truncated) lines.push("", `-# 나이스 API 키가 없어 ${neis.NO_KEY_ROW_LIMIT}교시까지만 보여요.`);
-  return embed.setDescription(lines.join("\n"));
+  const lines = [`${neis.formatDate(date)} 시간표`, `${SCHOOL_NAME} ${grade}학년 ${classNumber}반`, RULE];
+  if (periods.length === 0) lines.push("이날은 시간표 정보가 없어요.");
+  else lines.push(...periods.map((p) => `${p.period}교시: ${p.subject}`));
+  lines.push(RULE);
+  if (truncated) lines.push(`(나이스 API 키가 없어 ${neis.NO_KEY_ROW_LIMIT}교시까지만 보여요)`);
+  return lines.join("\n");
 }
