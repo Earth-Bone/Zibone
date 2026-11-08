@@ -145,23 +145,21 @@ async function handleReview(e: PullRequestReviewEvent): Promise<void> {
   if (pr.state !== "open") return;
   if (db.channelsForRepo(repo).length === 0) return;
 
+  // Approvals and plain comments are visible on GitHub; only a change request needs the channel's attention.
+  if (e.review.state.toLowerCase() !== "changes_requested") return;
   const reviewer = e.review.user.login;
   // The author replying to comments on their own PR is not a review.
   if (reviewer.toLowerCase() === pr.user.login.toLowerCase()) return;
 
-  const state = e.review.state.toLowerCase();
-  const headline =
-    state === "approved"
-      ? `✅ ${reviewer}님이 Approve 했어요!`
-      : state === "changes_requested"
-        ? `🛠️ ${reviewer}님이 변경을 요청했어요.`
-        : `💬 ${reviewer}님이 리뷰 코멘트를 남겼어요.`;
-  const color =
-    state === "approved" ? Colors.approved : state === "changes_requested" ? Colors.changes : Colors.commented;
   const body = e.review.body?.trim();
   const extra = [body ? `> ${body.slice(0, 300).replace(/\n/g, "\n> ")}` : "", `[리뷰 보기](${e.review.html_url})`]
     .filter(Boolean)
     .join("\n");
 
-  await notifyQuiet({ pr: toInfo(repo, pr), headline, color, extra });
+  await notifyQuiet({
+    pr: toInfo(repo, pr),
+    headline: `🛠️ ${reviewer}님이 변경을 요청했어요.`,
+    color: Colors.changes,
+    extra,
+  });
 }

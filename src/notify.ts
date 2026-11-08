@@ -5,9 +5,7 @@ import { client, send } from "./discord/client.js";
 export const Colors = {
   opened: 0x2da44e,
   push: 0x0969da,
-  approved: 0x2da44e,
   changes: 0xcf222e,
-  commented: 0x6e7781,
   merged: 0x8250df,
   closed: 0x6e7781,
 } as const;
