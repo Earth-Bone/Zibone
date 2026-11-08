@@ -4,10 +4,6 @@ import { client, send } from "./discord/client.js";
 
 export const Colors = {
   opened: 0x2da44e,
-  push: 0x0969da,
-  changes: 0xcf222e,
-  merged: 0x8250df,
-  closed: 0x6e7781,
 } as const;
 
 export interface PrInfo {
@@ -72,12 +68,5 @@ export async function notifyReviewers(opts: {
     }
     mentions = mentions.filter((id) => id !== authorId);
     await send({ channelId, mentions, roles, headline, embed: prEmbed(pr, color, unlinkedNote(unlinked)) });
-  }
-}
-
-/** Posts without mentioning anyone: pushes, reviews, merged / closed. */
-export async function notifyQuiet(opts: { pr: PrInfo; headline: string; color: number; extra?: string }): Promise<void> {
-  for (const channelId of db.channelsForRepo(opts.pr.repo)) {
-    await send({ channelId, mentions: [], headline: opts.headline, embed: prEmbed(opts.pr, opts.color, opts.extra) });
   }
 }
