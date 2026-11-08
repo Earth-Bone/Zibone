@@ -3,6 +3,7 @@ import {
   ButtonBuilder,
   ButtonStyle,
   type ChatInputCommandInteraction,
+  EmbedBuilder,
   type Guild,
   MessageFlags,
   SlashCommandBuilder,
@@ -10,6 +11,7 @@ import {
 import { config } from "../config.js";
 import * as db from "../db.js";
 import { createSignInUrl } from "../github/oauth.js";
+import * as neis from "../neis.js";
 
 const REPO_PATTERN = /^[\w.-]+\/[\w.-]+$/;
 const LOGIN_PATTERN = /^[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}$/i;
@@ -93,6 +95,24 @@ export const commandDefinitions = [
     .addSubcommand((s) => s.setName("목록").setDescription("현재 태그 대상을 보여줘요"))
     .addSubcommand((s) => s.setName("초기화").setDescription("이 채널의 담당자를 모두 지워요")),
 
+  new SlashCommandBuilder()
+    .setName("급식")
+    .setDescription("광주소프트웨어마이스터고 급식을 보여줘요")
+    .addStringOption((o) => o.setName("날짜").setDescription("비우면 오늘 (예: 내일, 11/10, 2026-11-10)")),
+
+  new SlashCommandBuilder()
+    .setName("시간표")
+    .setDescription("광주소프트웨어마이스터고 반별 시간표를 보여줘요")
+    .addIntegerOption((o) =>
+      o
+        .setName("학년")
+        .setDescription("학년")
+        .setRequired(true)
+        .addChoices({ name: "1학년", value: 1 }, { name: "2학년", value: 2 }, { name: "3학년", value: 3 }),
+    )
+    .addIntegerOption((o) => o.setName("반").setDescription("반 (예: 1)").setRequired(true).setMinValue(1).setMaxValue(20))
+    .addStringOption((o) => o.setName("날짜").setDescription("비우면 오늘 (예: 내일, 11/10, 2026-11-10)")),
+
   new SlashCommandBuilder().setName("도움말").setDescription("지본 사용법을 보여줘요"),
 ].map((c) => c.toJSON());
 
@@ -115,6 +135,9 @@ const HELP = [
   "",
   "**3. GitHub 아이디만 연결** (담당자는 아니지만 리뷰어로 지정될 사람)",
   "`/연결 github:minsu 대상:@민수` · `/연결해제 대상:@민수`",
+  "",
+  "**학교 정보** (광주소프트웨어마이스터고)",
+  "`/급식 날짜:내일` · `/시간표 학년:1 반:1 날짜:11/10` (날짜를 비우면 오늘)",
   "",
   "**알림이 가는 때**",
   "• PR 생성 / Draft 해제 → 리뷰어(없으면 담당자) 태그",
@@ -297,8 +320,57 @@ export async function handleCommand(i: ChatInputCommandInteraction): Promise<voi
       return;
     }
 
+    case "급식":
+    case "시간표":
+      await handleSchool(i);
+      return;
+
     case "도움말":
       await i.reply({ content: HELP, ...ephemeral });
       return;
   }
+}
+
+const SCHOOL_COLOR = 0x0969da;
+const BAD_DATE = "날짜를 읽지 못했어요. `내일`, `11/10`, `2026-11-10`처럼 입력해 주세요.";
+
+async function handleSchool(i: ChatInputCommandInteraction): Promise<void> {
+  const date = neis.parseDate(i.options.getString("날짜"));
+  if (!date) {
+    await i.reply({ content: BAD_DATE, flags: MessageFlags.Ephemeral });
+    return;
+  }
+  await i.deferReply();
+  try {
+    await i.editReply({ embeds: [i.commandName === "급식" ? await mealEmbed(date) : await timetableEmbed(i, date)] });
+  } catch (err) {
+    console.error(`/${i.commandName} NEIS request failed:`, err);
+    await i.editReply("나이스에서 정보를 가져오지 못했어요. 잠시 후 다시 시도해 주세요.");
+  }
+}
+
+async function mealEmbed(date: Date): Promise<EmbedBuilder> {
+  const meals = await neis.meals(date);
+  const embed = new EmbedBuilder().setColor(SCHOOL_COLOR).setTitle(`🍚 ${neis.formatDate(date)} 급식`);
+  if (meals.length === 0) return embed.setDescription("이날은 급식 정보가 없어요.");
+  return embed.addFields(
+    meals.map((m) => ({
+      name: m.calories ? `${m.name} · ${m.calories}` : m.name,
+      value: m.dishes.join("\n").slice(0, 1024) || "-",
+      inline: true,
+    })),
+  );
+}
+
+async function timetableEmbed(i: ChatInputCommandInteraction, date: Date): Promise<EmbedBuilder> {
+  const grade = i.options.getInteger("학년", true);
+  const classNumber = i.options.getInteger("반", true);
+  const { periods, truncated } = await neis.timetable(date, grade, classNumber);
+  const embed = new EmbedBuilder()
+    .setColor(SCHOOL_COLOR)
+    .setTitle(`📚 ${grade}학년 ${classNumber}반 · ${neis.formatDate(date)} 시간표`);
+  if (periods.length === 0) return embed.setDescription("이날은 시간표 정보가 없어요.");
+  const lines = periods.map((p) => `**${p.period}교시** ${p.subject}`);
+  if (truncated) lines.push("", `-# 나이스 API 키가 없어 ${neis.NO_KEY_ROW_LIMIT}교시까지만 보여요.`);
+  return embed.setDescription(lines.join("\n"));
 }

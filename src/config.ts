@@ -23,6 +23,8 @@ export const config = {
   port: number("PORT", 3000),
   databasePath: process.env.DATABASE_PATH || "./data/bot.db",
   // e.g. https://github.com/apps/zibone/installations/new, shown in /레포 등록 replies
+  // NEIS Open API key (open.neis.go.kr). Optional: without it NEIS returns only 5 rows, so timetables stop at 5교시.
+  neisApiKey: process.env.NEIS_API_KEY?.trim() || undefined,
   githubAppInstallUrl: process.env.GITHUB_APP_INSTALL_URL?.trim() || undefined,
   // GitHub App OAuth credentials (App settings > Client ID / Generate a new client secret).
   // Apps created through /setup store these automatically, so the env vars are only needed for older apps.
