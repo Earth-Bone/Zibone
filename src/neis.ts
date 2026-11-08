@@ -80,35 +80,79 @@ function ymd(date: Date): string {
 
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 
-/** e.g. 11월 10일 (화) */
+/** e.g. 2026년 11월 10일 (화) */
 export function formatDate(date: Date): string {
-  return `${date.getUTCMonth() + 1}월 ${date.getUTCDate()}일 (${WEEKDAYS[date.getUTCDay()]})`;
+  return `${date.getUTCFullYear()}년 ${date.getUTCMonth() + 1}월 ${date.getUTCDate()}일 (${WEEKDAYS[date.getUTCDay()]})`;
 }
 
 // ---- meals ----
 
+export interface Nutrition {
+  energy: number; // kcal
+  protein: number; // g
+  calcium: number; // mg
+  iron: number; // mg
+}
+
 export interface Meal {
   name: string; // 조식 / 중식 / 석식
   dishes: string[];
-  calories?: string;
+  nutrition: Nutrition;
 }
 
-/** Drops allergy numbers like "(1.5.6)" and NEIS line breaks. */
+/** Drops allergy numbers like "(1.5.6)", NEIS line breaks and the "*" NEIS uses to join side dishes. */
 function cleanDishes(raw: string): string[] {
   return raw
     .split(/<br\s*\/?>/i)
-    .map((d) => d.replace(/\(\s*[\d.\s]+\)/g, "").trim())
+    .map((d) => d.replace(/\(\s*[\d.\s]+\)/g, "").replace(/\*/g, "").trim())
     .filter(Boolean);
 }
 
+/** Reads "단백질(g) : 29.8" style values from NTR_INFO. Missing values count as 0. */
+function nutrient(info: string, name: string): number {
+  const m = info.match(new RegExp(`${name}\\([^)]*\\)\\s*:\\s*([\\d.,]+)`));
+  return m ? Number(m[1].replace(/,/g, "")) || 0 : 0;
+}
+
+function parseNutrition(calInfo = "", ntrInfo = ""): Nutrition {
+  return {
+    energy: Number(calInfo.replace(/,/g, "").match(/[\d.]+/)?.[0] ?? 0) || 0,
+    protein: nutrient(ntrInfo, "단백질"),
+    calcium: nutrient(ntrInfo, "칼슘"),
+    iron: nutrient(ntrInfo, "철분"),
+  };
+}
+
+export function totalNutrition(meals: Meal[]): Nutrition {
+  return meals.reduce(
+    (sum, m) => ({
+      energy: sum.energy + m.nutrition.energy,
+      protein: sum.protein + m.nutrition.protein,
+      calcium: sum.calcium + m.nutrition.calcium,
+      iron: sum.iron + m.nutrition.iron,
+    }),
+    { energy: 0, protein: 0, calcium: 0, iron: 0 },
+  );
+}
+
 export async function meals(date: Date): Promise<Meal[]> {
-  const { rows } = await call<{ MMEAL_SC_CODE: string; MMEAL_SC_NM: string; DDISH_NM: string; CAL_INFO?: string }>(
+  const { rows } = await call<{
+    MMEAL_SC_CODE: string;
+    MMEAL_SC_NM: string;
+    DDISH_NM: string;
+    CAL_INFO?: string;
+    NTR_INFO?: string;
+  }>(
     "mealServiceDietInfo",
     { MLSV_YMD: ymd(date) },
   );
   return rows
     .sort((a, b) => Number(a.MMEAL_SC_CODE) - Number(b.MMEAL_SC_CODE))
-    .map((r) => ({ name: r.MMEAL_SC_NM, dishes: cleanDishes(r.DDISH_NM), calories: r.CAL_INFO?.trim() || undefined }));
+    .map((r) => ({
+      name: r.MMEAL_SC_NM,
+      dishes: cleanDishes(r.DDISH_NM),
+      nutrition: parseNutrition(r.CAL_INFO, r.NTR_INFO),
+    }));
 }
 
 // ---- timetable ----
