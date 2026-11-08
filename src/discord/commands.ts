@@ -140,8 +140,7 @@ const HELP = [
   "",
   "**알림이 가는 때**",
   "• PR 생성 / Draft 해제 → 리뷰어(없으면 담당자) 태그",
-  "• 새 커밋 push · 변경 요청 · 머지 / 닫힘 → 태그 없이 알림",
-  "• Approve · 코멘트 → 알림 없음",
+  "• 그 밖의 push · 리뷰 · 머지 / 닫힘 → 알림 없음",
 ].join("\n");
 
 function installUrl(): string | undefined {
