@@ -106,11 +106,10 @@ export const commandDefinitions = [
     .addIntegerOption((o) =>
       o
         .setName("학년")
-        .setDescription("학년")
-        .setRequired(true)
+        .setDescription("비우면 1학년")
         .addChoices({ name: "1학년", value: 1 }, { name: "2학년", value: 2 }, { name: "3학년", value: 3 }),
     )
-    .addIntegerOption((o) => o.setName("반").setDescription("반 (예: 1)").setRequired(true).setMinValue(1).setMaxValue(20))
+    .addIntegerOption((o) => o.setName("반").setDescription("비우면 1반").setMinValue(1).setMaxValue(20))
     .addStringOption((o) => o.setName("날짜").setDescription("비우면 오늘 (예: 내일, 11/10, 2026-11-10)")),
 
   new SlashCommandBuilder().setName("도움말").setDescription("지본 사용법을 보여줘요"),
@@ -137,7 +136,8 @@ const HELP = [
   "`/연결 github:minsu 대상:@민수` · `/연결해제 대상:@민수`",
   "",
   "**학교 정보** (광주소프트웨어마이스터고)",
-  "`/급식 날짜:내일` · `/시간표 학년:1 반:1 날짜:11/10` (날짜를 비우면 오늘)",
+  "`/급식 날짜:내일` · `/시간표 학년:2 반:3 날짜:11/10`",
+  "날짜를 비우면 오늘, 학년·반을 비우면 1학년 1반이에요",
   "",
   "**알림이 가는 때**",
   "• PR 생성 / Draft 해제 → 리뷰어(없으면 담당자) 태그",
@@ -363,8 +363,8 @@ async function mealEmbed(date: Date): Promise<EmbedBuilder> {
 }
 
 async function timetableEmbed(i: ChatInputCommandInteraction, date: Date): Promise<EmbedBuilder> {
-  const grade = i.options.getInteger("학년", true);
-  const classNumber = i.options.getInteger("반", true);
+  const grade = i.options.getInteger("학년") ?? 1;
+  const classNumber = i.options.getInteger("반") ?? 1;
   const { periods, truncated } = await neis.timetable(date, grade, classNumber);
   const embed = new EmbedBuilder()
     .setColor(SCHOOL_COLOR)
